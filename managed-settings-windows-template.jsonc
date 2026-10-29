@@ -1,0 +1,160 @@
+{
+  "_comment": "NATIVE WINDOWS variant of the enterprise managed-settings.json template for Claude Code. Use managed-settings-template.jsonc for macOS, Linux, and WSL2. Deploy via server-managed settings (claude.ai admin console), MDM, or the system file paths below. Users cannot override these settings.",
+  "_paths": {
+    "windows": "C:\\Program Files\\ClaudeCode\\managed-settings.json",
+    "other_delivery": "Windows registry HKLM\\SOFTWARE\\Policies\\ClaudeCode (value: Settings) via Intune/GPO, or a managed-settings.d/ drop-in directory next to managed-settings.json. Server-managed settings apply one policy to every machine, so they cannot target Windows separately: use MDM for this file.",
+    "windows_differences": "Identical to the main template except: the OS sandbox is unavailable on native Windows, so the sandbox block is omitted and the compensating controls described in _notes are added. Shell commands on native Windows are NOT contained at the OS level. Prefer moving Windows developers to WSL2 and deploying the main template there; use this file only where that is not possible."
+  },
+  "_customize": "Review and adjust every value for your organization's workflows and risk tolerance. Values marked YOUR_..._HERE are placeholders that block access until replaced (fail-safe). Remove every key starting with an underscore before deployment: managed-settings.json is strict JSON. Run `claude doctor` after deployment to confirm no entries were rejected.",
+  "_notes": {
+    "sandbox": "Not set: the OS sandbox does not run on native Windows. Do not copy failIfUnavailable: true into this file or Claude Code will refuse to start.",
+    "forceLoginMethod / forceLoginOrgUUID": "Enforce company-provisioned accounts: only claude.ai logins into your organization. forceLoginOrgUUID requires a Claude Team or Enterprise organization; find the ID at claude.ai admin settings > Organization. Clients on individual Pro/Max plans have no organization ID: delete forceLoginOrgUUID and keep forceLoginMethod. A Claude Console organization ID only pre-selects the org at sign-in and does not block other orgs. An empty list or an unreplaced placeholder blocks every login. Deploy these two keys by MDM or the system file, not only server-managed settings, which arrive after the first login.",
+    "requiredMinimumVersion": "Refuses to start older versions. 2.0.65 is the floor that includes the fixes for CVE-2025-59536 and CVE-2026-21852 (malicious project config files). Raise it to your currently approved version.",
+    "permissions.disableAutoMode": "Removes auto permission mode, where a classifier approves actions instead of the user. Remove this key if your organization has evaluated and approved auto mode.",
+    "permissions.deny (Bash)": "Bash rules match command text as Claude writes it, not the program run: `Bash(rm -rf:*)` does not stop `/bin/rm -rf` or `bash -c '...'`. Treat them as guardrails. The sandbox block below is the enforcement boundary for shell commands.",
+    "permissions.deny (Read)": "Read deny rules block Claude's file tools and commands that name the file (e.g. `cat .env`), but not indirect reads such as `grep -r` over a directory. With no sandbox on native Windows, nothing stops indirect reads by shell commands; rely on endpoint controls for that.",
+    "allowManagedHooksOnly": "Only hooks deployed in managed settings, and hooks from plugins force-enabled in managed enabledPlugins, run. Blocks hooks committed in a repository's .claude/settings.json (a known code-execution vector) and hooks from plugins users install themselves. Project CodeGuard ships only a skill, no hooks, so it is unaffected. To approve another plugin that needs hooks, force-enable it in enabledPlugins below rather than turning this off.",
+    "extraKnownMarketplaces / enabledPlugins": "Declares the CodeGuard marketplace centrally and force-enables the plugin for every user, so nobody has to run the /plugin install step. Add other approved plugins here.",
+    "allowedMcpServers / allowManagedMcpServersOnly": "Allowlist of approved MCP servers. Match by serverUrl (or serverCommand) rather than by name, since anyone can name a server anything. With allowManagedMcpServersOnly, user and project allowlists are ignored.",
+    "enableAllProjectMcpServers": "Keep false. When true, every server in a repository's .mcp.json is approved without a prompt (the trigger for CVE-2025-59536).",
+    "strictKnownMarketplaces": "Allowlist of plugin marketplace sources, as source objects. An empty array blocks ALL marketplaces, including Project CodeGuard. cosai-oasis/project-codeguard is CodeGuard's current home; the older project-codeguard/rules listing is deprecated.",
+    "windows compensating controls": "Without the sandbox, deny/ask rules are the only shell controls and they match command text, not programs. This file therefore: sets allowManagedPermissionRulesOnly so repositories and users cannot add allow rules that pre-approve risky commands; sets permissions.blockReadsOutsideWorkingDirectories so Claude's file tools stay inside the project; adds ask rules for Windows download and execution tools (PowerShell, certutil, bitsadmin, curl.exe). Pair it with endpoint controls: EDR, outbound proxy or firewall allowlisting, and AppLocker/WDAC.",
+    "allowManagedPermissionRulesOnly": "Set to true in this variant: permission rules from user, project, and local settings are ignored entirely, so add any allow rules your developers need (for example Bash(npm run *)) to this file."
+  },
+
+  "env": {
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
+  },
+
+  "cleanupPeriodDays": 30,
+
+  "forceLoginMethod": "claudeai",
+  "forceLoginOrgUUID": ["YOUR_CLAUDE_ORG_UUID_HERE"],
+
+  "requiredMinimumVersion": "2.0.65",
+
+  "allowManagedHooksOnly": true,
+  "allowManagedPermissionRulesOnly": true,
+
+  "enableAllProjectMcpServers": false,
+  "allowedMcpServers": [
+    { "serverUrl": "https://YOUR_APPROVED_MCP_SERVER_HERE/*" }
+  ],
+  "allowManagedMcpServersOnly": true,
+
+  "strictKnownMarketplaces": [
+    { "source": "github", "repo": "cosai-oasis/project-codeguard" }
+  ],
+  "extraKnownMarketplaces": {
+    "project-codeguard": {
+      "source": { "source": "github", "repo": "cosai-oasis/project-codeguard" }
+    }
+  },
+  "enabledPlugins": {
+    "codeguard-security@project-codeguard": true
+  },
+
+  "permissions": {
+    "disableBypassPermissionsMode": "disable",
+    "disableAutoMode": "disable",
+    "blockReadsOutsideWorkingDirectories": true,
+    "defaultMode": "default",
+
+    "deny": [
+      "Bash(rm -rf:*)",
+      "Bash(sudo:*)",
+      "Bash(su:*)",
+      "Bash(chmod 777:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git clean -f:*)",
+      "Bash(git checkout -- .:*)",
+      "Bash(mkfs:*)",
+      "Bash(dd:*)",
+      "Bash(nslookup:*)",
+      "Bash(dig:*)",
+      "Bash(nc:*)",
+      "Bash(ncat:*)",
+      "Bash(netcat:*)",
+      "Bash(telnet:*)",
+      "Bash(base64:*)",
+      "Bash(env:*)",
+      "Bash(printenv:*)",
+      "Write(**/.env)",
+      "Write(**/.env.*)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(**/*secret*)",
+      "Read(**/*credential*)",
+      "Read(**/*password*)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Read(**/*id_rsa*)",
+      "Read(**/*.p12)",
+      "Read(**/*.pfx)",
+      "Read(**/*.jks)",
+      "Read(**/*.keystore)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Read(~/.azure/**)",
+      "Read(~/.config/gcloud/**)",
+      "Read(~/.kube/**)",
+      "Read(~/.docker/config.json)",
+      "Read(~/.gnupg/**)",
+      "Read(~/.netrc)",
+      "Read(~/.npmrc)",
+      "Read(~/.pypirc)",
+      "Read(~/.git-credentials)"
+    ],
+
+    "ask": [
+      "Bash(curl:*)",
+      "Bash(wget:*)",
+      "Bash(ssh:*)",
+      "Bash(docker:*)",
+      "Bash(kubectl:*)",
+      "Bash(terraform apply:*)",
+      "Bash(terraform destroy:*)",
+      "Bash(npm publish:*)",
+      "Bash(npm install:*)",
+      "Bash(pip install:*)",
+      "Bash(brew install:*)",
+      "Bash(git push:*)",
+      "Bash(aws:*)",
+      "Bash(gcloud:*)",
+      "Bash(az:*)",
+      "Bash(psql:*)",
+      "Bash(mysql:*)",
+      "Bash(mongosh:*)",
+      "Bash(pkill:*)",
+      "Bash(kill:*)",
+      "Bash(python -c:*)",
+      "Bash(python3 -c:*)",
+      "Bash(node -e:*)",
+      "Bash(node --eval:*)",
+      "Bash(ruby -e:*)",
+      "Bash(perl -e:*)",
+      "Bash(php -r:*)",
+      "Bash(tar:*)",
+      "Bash(zip:*)",
+      "Bash(xargs:*)",
+      "Bash(powershell:*)",
+      "Bash(powershell.exe:*)",
+      "Bash(pwsh:*)",
+      "Bash(pwsh.exe:*)",
+      "Bash(cmd /c:*)",
+      "Bash(cmd.exe /c:*)",
+      "Bash(curl.exe:*)",
+      "Bash(certutil:*)",
+      "Bash(certutil.exe:*)",
+      "Bash(bitsadmin:*)",
+      "Bash(bitsadmin.exe:*)",
+      "Bash(mshta:*)",
+      "Bash(rundll32:*)",
+      "Bash(regsvr32:*)",
+      "Bash(reg add:*)",
+      "Bash(reg delete:*)"
+    ]
+  }
+}
