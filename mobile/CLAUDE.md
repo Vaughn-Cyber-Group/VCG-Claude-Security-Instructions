@@ -5,7 +5,7 @@ These rules are mandatory for all mobile app code generation. They extend the ro
 ## Secure Storage
 
 - **iOS**: Use Keychain for all sensitive data. Never UserDefaults, plist, or plain files.
-- **Android**: Use Android Keystore or EncryptedSharedPreferences. Never SharedPreferences or SQLite for secrets.
+- **Android**: Use Android Keystore (directly, or via DataStore with Tink using a Keystore-backed key). Never SharedPreferences or SQLite for secrets. Do not adopt `EncryptedSharedPreferences` / Jetpack Security Crypto in new code: Google deprecated the whole library in version 1.1.0 and no further releases are planned; migrate existing uses.
 - **React Native**: Use react-native-keychain, not AsyncStorage for secrets.
 - **Flutter**: Use flutter_secure_storage, not shared_preferences for secrets.
 

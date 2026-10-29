@@ -6,7 +6,7 @@ Enterprise governance framework for securing Claude Code deployments. Provides l
 
 A set of CLAUDE.md files and supporting documents that enforce security policies when teams use Claude Code for AI-assisted development. The framework operates at three layers:
 
-1. **Platform enforcement** (`managed-settings-template.jsonc`): Controls what Claude Code CAN DO (tool permissions, file access restrictions). Deployed via MDM. Users cannot override.
+1. **Platform enforcement** (`managed-settings-template.jsonc`): Controls what Claude Code CAN DO (OS-level sandbox, tool permissions, file access restrictions, approved accounts, MCP servers and plugins). Deployed via server-managed settings or MDM. Users cannot override.
 2. **Technical code security** (Project CodeGuard plugin): Controls HOW code is generated (crypto, input validation, auth patterns, API security, container hardening). Open-source rules from CoSAI/OWASP.
 3. **Enterprise governance** (CLAUDE.md files): Controls organizational policy (company accounts, secrets management tools, license compliance, AI agent risk controls).
 
@@ -25,18 +25,27 @@ A set of CLAUDE.md files and supporting documents that enforce security policies
 
 ## Quick Start (Managed / Enterprise)
 
-For organizations with MDM (Jamf, Intune, etc.) that can deploy system-level configuration:
+For organizations on a Claude Team or Enterprise plan, or with MDM (Jamf, Intune, etc.):
 
 1. Clone this repo
 2. Customize `[COMPANY NAME]` placeholder in `CLAUDE.md`
 3. Install Project CodeGuard: `/plugin marketplace add cosai-oasis/project-codeguard`
-4. Deploy `managed-settings-template.jsonc` via MDM (remove `_comment`, `_paths`, and `_customize` keys first)
-   - macOS: `/Library/Application Support/ClaudeCode/managed-settings.json`
-   - Linux: `/etc/claude-code/managed-settings.json`
-   - Windows: `C:\Program Files\ClaudeCode\managed-settings.json`
-5. Copy the CLAUDE.md structure into your project repositories
+4. Customize `managed-settings-template.jsonc`. Replace every `YOUR_..._HERE` placeholder (org UUID, approved MCP servers), add your package registries to the sandbox `allowedDomains`, and read the `_notes` block. Then remove every key starting with `_`, because managed settings must be strict JSON.
+5. Deploy it through one of:
+   - **Server-managed settings** in the claude.ai admin console. This is the only managed source that also reaches Claude Code cloud sessions.
+   - **MDM / OS policy**: macOS plist domain `com.anthropic.claudecode`; Windows registry `HKLM\SOFTWARE\Policies\ClaudeCode` (value `Settings`, holding the JSON).
+   - **System file**:
+     - macOS: `/Library/Application Support/ClaudeCode/managed-settings.json`
+     - Linux/WSL: `/etc/claude-code/managed-settings.json`
+     - Windows: `C:\Program Files\ClaudeCode\managed-settings.json` (the old `C:\ProgramData\ClaudeCode\` path is no longer read)
+     - A `managed-settings.d/` directory next to the file can hold additional drop-in JSON files that merge with it.
+6. Optionally deploy the root `CLAUDE.md` as **managed memory** so it loads in every project without being copied: place it as `CLAUDE.md` in the same system directory as `managed-settings.json`. Users cannot exclude managed memory.
+7. Copy the `mobile/` and `infra/` CLAUDE.md files into the project repositories that need them
+8. Verify on a test machine: `/status` shows the managed source, and `claude doctor` lists any rejected entries.
 
 Managed settings cannot be overridden by users. This is the recommended approach for enterprises.
+
+**Native Windows:** the template sets `sandbox.failIfUnavailable: true`, and the sandbox runs only on macOS, Linux, and WSL2. Claude Code will refuse to start on native Windows with this template. Either standardize Windows developers on WSL2, or deploy a Windows-specific copy with `failIfUnavailable: false` and accept that Bash commands run unsandboxed there.
 
 ## Quick Start (Non-Managed / Individual / Small Team)
 
@@ -87,7 +96,20 @@ Without MDM, use **project-level** or **user-level** settings files to enforce p
 }
 ```
 
-The example above is a starter set. For the full enterprise rule list — network exfiltration tooling (`nc`, `ncat`, `telnet`, `nslookup`, `dig`, `base64`), additional secret-file globs, container/IaC `ask` rules — copy from `managed-settings-template.jsonc` and adapt. The same `permissions` schema works in `.claude/settings.json`.
+The example above is a starter set. For the full enterprise rule list — network exfiltration tooling (`nc`, `ncat`, `telnet`, `nslookup`, `dig`, `base64`), additional secret-file globs, container/IaC `ask` rules — copy from `managed-settings-template.jsonc` and adapt. The same `permissions` and `sandbox` schema works in `.claude/settings.json`. Managed-only keys (`allowManagedHooksOnly`, `allowManagedMcpServersOnly`, `strictKnownMarketplaces`, `requiredMinimumVersion`) are ignored in project and user files.
+
+**Turn on the sandbox too.** Bash deny rules match command text, so `Bash(rm -rf:*)` does not stop `/bin/rm -rf`, and Read deny rules don't stop indirect reads like `grep -r` across the project. The sandbox enforces filesystem and network limits at the OS level for every command Claude runs (macOS, Linux, WSL2):
+
+```json
+{
+  "sandbox": {
+    "enabled": true,
+    "network": {
+      "allowedDomains": ["github.com", "registry.npmjs.org"]
+    }
+  }
+}
+```
 
 **User-level** (`~/.claude/settings.json` — applies to all your projects, not shared):
 
@@ -109,22 +131,25 @@ The example above is a starter set. For the full enterprise rule list — networ
 
 | Priority | File | Scope | Shared via git? |
 |---|---|---|---|
-| 1 | `managed-settings.json` (system path) | All users on machine | No (deployed via MDM) |
-| 2 | `.claude/settings.local.json` | This project, this user only | No (gitignored) |
-| 3 | `.claude/settings.json` | This project, all collaborators | Yes |
-| 4 | `~/.claude/settings.json` | All projects for this user | No |
+| 1 | Managed (server-managed, MDM policy, or `managed-settings.json`) | All users it is deployed to | No |
+| 2 | `--settings` on the command line | This session only | No |
+| 3 | `.claude/settings.local.json` | This project, this user only | No (gitignored) |
+| 4 | `.claude/settings.json` | This project, all collaborators | Yes |
+| 5 | `~/.claude/settings.json` | All projects for this user | No |
 
-Rules are evaluated in order: **deny > ask > allow** (first match wins).
+Permission rule lists merge across all levels rather than overriding each other. Rules are evaluated in order: **deny > ask > allow**. In a shared `.claude/settings.json`, `deny` and `ask` rules apply immediately, but `allow` rules and most `env` values wait until each person trusts the folder.
 
 ### Key differences from managed deployment
 
 | Capability | Managed (MDM) | Non-Managed |
 |---|---|---|
 | Permission rules (deny/ask/allow) | Yes | Yes |
+| Sandbox (`sandbox.enabled`) | Yes, lockable (`failIfUnavailable`, `allowUnsandboxedCommands: false`, `allowManagedDomainsOnly`) | Yes, but users can turn it off |
 | Users cannot override rules | Yes | No — users can modify their own settings |
-| `disableBypassPermissionsMode` | Yes | Not available |
-| `allowManagedPermissionRulesOnly` | Yes | Not available |
-| `strictKnownMarketplaces` | Yes | Not available |
+| `disableBypassPermissionsMode` / `disableAutoMode` | Yes, enforced | Yes, but users can remove it |
+| `forceLoginMethod` / `forceLoginOrgUUID` (company accounts only) | Yes | Not enforced |
+| `allowManagedPermissionRulesOnly`, `allowManagedHooksOnly`, `allowManagedMcpServersOnly` | Yes | Not available (managed-only) |
+| `strictKnownMarketplaces`, `requiredMinimumVersion` | Yes | Not available (managed-only) |
 | CLAUDE.md governance rules | Yes | Yes |
 | Project CodeGuard plugin | Yes | Yes |
 
@@ -157,6 +182,7 @@ Create `.github/CODEOWNERS` to require specific reviewers for governance files:
 CLAUDE.md                     @your-team-lead
 **/CLAUDE.md                  @your-team-lead
 .claude/                      @your-team-lead
+.mcp.json                     @your-team-lead
 .github/workflows/            @your-team-lead
 .github/CODEOWNERS            @your-team-lead
 Dockerfile                    @your-team-lead
@@ -171,44 +197,51 @@ Add these jobs to `.github/workflows/security.yml` (or equivalent). These are th
 name: Security checks
 on: [pull_request]
 
+permissions:
+  contents: read
+
+# Pin every action by full commit SHA in production (see infra/CLAUDE.md).
 jobs:
   secret-scanning:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4  # pin by SHA in production
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Scan for secrets
-        run: |
-          pip install gitleaks || true
-          gitleaks detect --source . --report-path gitleaks-report.json --exit-code 1
+        # gitleaks-action is under a commercial EULA (free key from gitleaks.io for organizations).
+        # If Legal won't approve that, run the MIT-licensed gitleaks binary from its GitHub release instead.
+        uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}  # organizations only
 
   sast:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Run Semgrep OWASP rules
         run: |
           pip install semgrep
-          semgrep --config=p/owasp-top-ten --error .
+          semgrep scan --config=p/owasp-top-ten --error .
 
   dependency-audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Audit dependencies
         run: npm audit --audit-level=high  # adjust for your package manager
 
   governance-file-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Flag governance file changes
         run: |
           # Warn if security-sensitive files were modified
-          CHANGED=$(git diff --name-only origin/main...HEAD | grep -E '(CLAUDE\.md|\.claude/|\.github/workflows/|\.github/CODEOWNERS|Dockerfile|\.tf$)' || true)
+          CHANGED=$(git diff --name-only origin/main...HEAD | grep -E '(CLAUDE\.md|\.claude/|\.mcp\.json|managed-settings|managed-mcp|\.github/workflows/|\.github/CODEOWNERS|\.gitignore|Dockerfile|\.tf$)' || true)
           if [ -n "$CHANGED" ]; then
             echo "::warning::Security-sensitive files modified — require security review:"
             echo "$CHANGED"
@@ -237,6 +270,7 @@ repos:
       - id: check-added-large-files
 EOF
 
+pre-commit autoupdate   # bumps the revs above to the latest releases
 pre-commit install
 ```
 
@@ -256,8 +290,9 @@ The bolded rows are the **hard controls** in a non-managed environment. CI/CD sc
 ## Standards Alignment
 
 - [Project CodeGuard](https://project-codeguard.org/) (CoSAI/OWASP) for technical code security
-- [OWASP Top 10 for LLM Applications (2025)](https://genai.owasp.org/llm-top-10/) for AI application risks
-- [OWASP Top 10 for Agentic Applications](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/) for autonomous AI risks
+- [OWASP Top 10 for LLM Applications](https://genai.owasp.org/llm-top-10/) for AI application risks (mapping uses 2025 IDs; 2026 edition published August 2026)
+- [OWASP Top 10 for Agentic Applications (2026)](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/) for autonomous AI risks
+- [Claude Code security](https://code.claude.com/docs/en/security), [permissions](https://code.claude.com/docs/en/permissions), [sandboxing](https://code.claude.com/docs/en/sandboxing), and [managed settings](https://code.claude.com/docs/en/managed-settings) docs
 - [OWASP GenAI Security Project](https://genai.owasp.org/) for broader governance guidance
 
 ## Customization
@@ -267,6 +302,8 @@ Before deploying to a client or organization:
 - Replace `[COMPANY NAME]` in root CLAUDE.md
 - Adjust secrets management tool references to match the client's stack
 - Review and customize managed-settings.json deny/ask rules for the org's workflows
+- Set the org UUID, approved MCP servers, sandbox `allowedDomains`, and `requiredMinimumVersion`
+- Decide whether to allow `auto` permission mode (the template disables it)
 - Add or remove approved licenses based on Legal team input
 - Update MCP server governance to reflect approved integrations
 
