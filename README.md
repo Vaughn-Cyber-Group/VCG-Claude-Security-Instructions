@@ -20,7 +20,8 @@ A set of CLAUDE.md files and supporting documents that enforce security policies
 │   ├── secrets-management.md          # WRONG/CORRECT code examples (loaded on demand)
 │   └── agentic-security.md            # OWASP LLM Top 10 + Agentic Top 10 mapping
 ├── scripts/security-checks.md         # Pre-commit, SBOM, scanning commands
-└── managed-settings-template.jsonc    # Platform-level permission enforcement template
+├── managed-settings-template.jsonc    # Platform enforcement template (macOS, Linux, WSL2)
+└── managed-settings-windows-template.jsonc  # Native Windows variant (no OS sandbox, compensating controls)
 ```
 
 ## Quick Start (Managed / Enterprise)
@@ -29,7 +30,7 @@ For organizations on a Claude Team or Enterprise plan, or with MDM (Jamf, Intune
 
 1. Clone this repo
 2. Customize `[COMPANY NAME]` placeholder in `CLAUDE.md`
-3. Install Project CodeGuard: `/plugin marketplace add cosai-oasis/project-codeguard`
+3. Project CodeGuard: the managed template declares its marketplace and force-enables `codeguard-security@project-codeguard` for every user, so no manual install is needed. (Without managed settings, run `/plugin marketplace add cosai-oasis/project-codeguard`.)
 4. Customize `managed-settings-template.jsonc`. Replace every `YOUR_..._HERE` placeholder (org UUID, approved MCP servers), add your package registries to the sandbox `allowedDomains`, and read the `_notes` block. Then remove every key starting with `_`, because managed settings must be strict JSON.
 5. Deploy it through one of:
    - **Server-managed settings** in the claude.ai admin console. This is the only managed source that also reaches Claude Code cloud sessions.
@@ -45,7 +46,7 @@ For organizations on a Claude Team or Enterprise plan, or with MDM (Jamf, Intune
 
 Managed settings cannot be overridden by users. This is the recommended approach for enterprises.
 
-**Native Windows:** the template sets `sandbox.failIfUnavailable: true`, and the sandbox runs only on macOS, Linux, and WSL2. Claude Code will refuse to start on native Windows with this template. Either standardize Windows developers on WSL2, or deploy a Windows-specific copy with `failIfUnavailable: false` and accept that Bash commands run unsandboxed there.
+**Native Windows:** the sandbox runs only on macOS, Linux, and WSL2, and the main template sets `sandbox.failIfUnavailable: true`, so Claude Code would refuse to start on native Windows. Deploy `managed-settings-windows-template.jsonc` to native Windows machines through Intune/GPO (registry or `C:\Program Files\ClaudeCode\`). It drops the sandbox and compensates with `allowManagedPermissionRulesOnly`, `permissions.blockReadsOutsideWorkingDirectories`, and ask rules for PowerShell, `cmd /c`, `certutil`, `bitsadmin`, and `curl.exe`. Shell commands there are still not contained at the OS level, so pair it with EDR and outbound allowlisting, and prefer WSL2 (which reads the main template at `/etc/claude-code/`) wherever possible. Server-managed settings apply one policy to everyone, so use MDM rather than the admin console if you need the Windows split.
 
 ## Quick Start (Non-Managed / Individual / Small Team)
 
@@ -290,7 +291,7 @@ The bolded rows are the **hard controls** in a non-managed environment. CI/CD sc
 ## Standards Alignment
 
 - [Project CodeGuard](https://project-codeguard.org/) (CoSAI/OWASP) for technical code security
-- [OWASP Top 10 for LLM Applications](https://genai.owasp.org/llm-top-10/) for AI application risks (mapping uses 2025 IDs; 2026 edition published August 2026)
+- [OWASP Top 10 for LLM Applications](https://genai.owasp.org/llm-top-10/) (2026 edition) for AI application risks
 - [OWASP Top 10 for Agentic Applications (2026)](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/) for autonomous AI risks
 - [Claude Code security](https://code.claude.com/docs/en/security), [permissions](https://code.claude.com/docs/en/permissions), [sandboxing](https://code.claude.com/docs/en/sandboxing), and [managed settings](https://code.claude.com/docs/en/managed-settings) docs
 - [OWASP GenAI Security Project](https://genai.owasp.org/) for broader governance guidance

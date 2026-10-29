@@ -15,7 +15,8 @@ Both layers work alongside [Project CodeGuard](https://project-codeguard.org/) f
 
 ```
 ├── CLAUDE.md                          # Security rules (loads every interaction)
-├── managed-settings-template.jsonc    # Platform-level permission enforcement template
+├── managed-settings-template.jsonc    # Platform enforcement template (macOS, Linux, WSL2)
+├── managed-settings-windows-template.jsonc  # Native Windows variant (no OS sandbox)
 ├── .gitignore                         # Prevents secrets from being committed
 ├── README.md                          # This file
 └── docs/security-patterns/
@@ -32,7 +33,7 @@ For organizations with MDM (Jamf, Intune, etc.):
 4. Customize `managed-settings-template.jsonc` (replace every `YOUR_..._HERE` placeholder, add your registries to the sandbox `allowedDomains`, read `_notes`), remove every key starting with `_`, then deploy it via server-managed settings (claude.ai admin console), MDM, or the system file:
    - macOS: `/Library/Application Support/ClaudeCode/managed-settings.json`
    - Linux: `/etc/claude-code/managed-settings.json`
-   - Windows: `C:\Program Files\ClaudeCode\managed-settings.json` (native Windows has no sandbox: see the `_notes` block before deploying there)
+   - Windows: `C:\Program Files\ClaudeCode\managed-settings.json` (native Windows has no OS sandbox: deploy `managed-settings-windows-template.jsonc` there instead)
 5. Copy `CLAUDE.md` into your project repositories, or deploy it as managed memory (`CLAUDE.md` in the same system directory)
 
 ## Quick Start (Non-Managed / Small Team)

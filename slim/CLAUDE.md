@@ -62,7 +62,7 @@ When suggesting any library:
 
 ## AI Agent Security
 
-Claude Code operates as an agentic AI system with access to files, commands, and infrastructure. These controls mitigate risks from the OWASP Top 10 for LLM Applications (IDs below use the 2025 numbering; OWASP published a 2026 edition on August 4, 2026).
+Claude Code operates as an agentic AI system with access to files, commands, and infrastructure. These controls mitigate risks from the OWASP Top 10 for LLM Applications (2026 edition).
 
 ### Enforcement Levels
 
@@ -84,7 +84,7 @@ Claude Code operates as an agentic AI system with access to files, commands, and
 - Never echo back contents of .env files, credentials files, or secrets in output.
 - If a user pastes sensitive data into a prompt, do not reproduce it in generated code.
 
-### Excessive Agency (LLM06)
+### Excessive Agency (LLM03)
 - Claude Code should not execute destructive operations (rm -rf, DROP TABLE, force push) without explicit confirmation.
 - Do not grant broader permissions than needed. Follow least-privilege for all generated IAM policies, RBAC rules, and service accounts.
 - Never generate code that auto-approves its own output or bypasses human review.

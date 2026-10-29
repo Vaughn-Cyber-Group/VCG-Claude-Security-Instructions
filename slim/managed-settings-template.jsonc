@@ -13,11 +13,12 @@
     "permissions.disableAutoMode": "Removes auto permission mode, where a classifier approves actions instead of the user. Remove this key if your organization has evaluated and approved auto mode.",
     "permissions.deny (Bash)": "Bash rules match command text as Claude writes it, not the program run: `Bash(rm -rf:*)` does not stop `/bin/rm -rf` or `bash -c '...'`. Treat them as guardrails. The sandbox block below is the enforcement boundary for shell commands.",
     "permissions.deny (Read)": "Read deny rules block Claude's file tools and commands that name the file (e.g. `cat .env`), but not indirect reads such as `grep -r` over a directory. With the sandbox enabled, Read deny paths are also enforced on every sandboxed command.",
-    "allowManagedHooksOnly": "Only hooks deployed in managed settings run. Blocks hooks committed in a repository's .claude/settings.json, a known code-execution vector. Confirm your approved plugins still work; if one relies on hooks, deploy those hooks as managed hooks.",
+    "allowManagedHooksOnly": "Only hooks deployed in managed settings, and hooks from plugins force-enabled in managed enabledPlugins, run. Blocks hooks committed in a repository's .claude/settings.json (a known code-execution vector) and hooks from plugins users install themselves. Project CodeGuard ships only a skill, no hooks, so it is unaffected. To approve another plugin that needs hooks, force-enable it in enabledPlugins below rather than turning this off.",
+    "extraKnownMarketplaces / enabledPlugins": "Declares the CodeGuard marketplace centrally and force-enables the plugin for every user, so nobody has to run the /plugin install step. Add other approved plugins here.",
     "allowedMcpServers / allowManagedMcpServersOnly": "Allowlist of approved MCP servers. Match by serverUrl (or serverCommand) rather than by name, since anyone can name a server anything. With allowManagedMcpServersOnly, user and project allowlists are ignored.",
     "enableAllProjectMcpServers": "Keep false. When true, every server in a repository's .mcp.json is approved without a prompt (the trigger for CVE-2025-59536).",
-    "strictKnownMarketplaces": "Allowlist of plugin marketplace sources, as source objects. An empty array blocks ALL marketplaces, including Project CodeGuard. Both CodeGuard repository names are listed because the project has published under both.",
-    "sandbox": "Runs every Bash command in an OS sandbox with a fixed network allowlist and filesystem read restrictions. Supported on macOS, Linux, and WSL2. Native Windows is NOT supported: with failIfUnavailable true, Claude Code will refuse to start there. Either run Claude Code in WSL2 or deploy a Windows-specific file with failIfUnavailable false. Add the package registries and internal hosts your developers need to allowedDomains.",
+    "strictKnownMarketplaces": "Allowlist of plugin marketplace sources, as source objects. An empty array blocks ALL marketplaces, including Project CodeGuard. cosai-oasis/project-codeguard is CodeGuard's current home; the older project-codeguard/rules listing is deprecated.",
+    "sandbox": "Runs every Bash command in an OS sandbox with a fixed network allowlist and filesystem read restrictions. Supported on macOS, Linux, and WSL2. Native Windows is NOT supported: with failIfUnavailable true, Claude Code will refuse to start there. Deploy managed-settings-windows-template.jsonc to native Windows machines instead (Windows developers working inside WSL2 get this file at /etc/claude-code/ in the WSL distribution). Add the package registries and internal hosts your developers need to allowedDomains.",
     "allowManagedPermissionRulesOnly": "Not set here. Set it to true to ignore permission rules from user, project, and local settings entirely (strictest posture; project-level deny rules are then also ignored)."
   },
 
@@ -41,9 +42,16 @@
   "allowManagedMcpServersOnly": true,
 
   "strictKnownMarketplaces": [
-    { "source": "github", "repo": "cosai-oasis/project-codeguard" },
-    { "source": "github", "repo": "project-codeguard/rules" }
+    { "source": "github", "repo": "cosai-oasis/project-codeguard" }
   ],
+  "extraKnownMarketplaces": {
+    "project-codeguard": {
+      "source": { "source": "github", "repo": "cosai-oasis/project-codeguard" }
+    }
+  },
+  "enabledPlugins": {
+    "codeguard-security@project-codeguard": true
+  },
 
   "permissions": {
     "disableBypassPermissionsMode": "disable",

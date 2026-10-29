@@ -1,10 +1,10 @@
 # AI Agent Security Patterns
 
-Reference guide for securing AI coding agent deployments. Maps OWASP Top 10 for LLM Applications (2025) and OWASP Top 10 for Agentic Applications to Claude Code enterprise use.
+Reference guide for securing AI coding agent deployments. Maps OWASP Top 10 for LLM Applications (2026) and OWASP Top 10 for Agentic Applications to Claude Code enterprise use.
 
 ## OWASP LLM Top 10 mapping
 
-The prescriptive rules and mitigations for each OWASP LLM Top 10 (2025) risk live in `CLAUDE.md` § AI Agent Security. This document covers the attack scenarios, defense-in-depth ordering, and compliance framework cross-reference that don't fit inside that table.
+The prescriptive rules and mitigations for each OWASP LLM Top 10 (2026) risk live in `CLAUDE.md` § AI Agent Security. This document covers the attack scenarios, defense-in-depth ordering, and compliance framework cross-reference that don't fit inside that table.
 
 ## Prompt Injection Defense In Depth
 
@@ -121,7 +121,7 @@ Notes:
 ## OWASP GenAI Security Resources
 
 For deeper guidance on these topics:
-- OWASP Top 10 for LLM Applications (2026 edition, August 2026; 2025 edition still widely cited): https://genai.owasp.org/llm-top-10/
+- OWASP Top 10 for LLM Applications (2026 edition, August 2026): https://genai.owasp.org/llm-top-10/
 - OWASP Top 10 for Agentic Applications (2026): https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 - OWASP Agentic Security Initiative (practical guides, including secure MCP development): https://genai.owasp.org/initiatives/agentic-security-initiative/
 - OWASP MCP Top 10: https://owasp.org/www-project-mcp-top-10/
