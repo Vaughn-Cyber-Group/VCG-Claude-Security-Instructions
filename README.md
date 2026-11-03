@@ -10,9 +10,13 @@ A set of CLAUDE.md files and supporting documents that enforce security policies
 2. **Technical code security** (Project CodeGuard plugin): Controls HOW code is generated (crypto, input validation, auth patterns, API security, container hardening). Open-source rules from CoSAI/OWASP.
 3. **Enterprise governance** (CLAUDE.md files): Controls organizational policy (company accounts, secrets management tools, license compliance, AI agent risk controls).
 
+**Setting this up?** Start with [SETUP-ADMINS.md](SETUP-ADMINS.md) if you're deploying for an organization, or [SETUP-DEVELOPERS.md](SETUP-DEVELOPERS.md) if you're a developer.
+
 ## File Structure
 
 ```
+├── SETUP-ADMINS.md                    # Step-by-step deployment guide for administrators
+├── SETUP-DEVELOPERS.md                # Step-by-step setup guide for developers
 ├── CLAUDE.md                          # Root: Universal rules (loads every interaction)
 ├── mobile/CLAUDE.md                   # Mobile platform rules (loads in mobile directories)
 ├── infra/CLAUDE.md                    # Cloud, container, K8s, CI/CD rules (loads in infra directories)
