@@ -317,13 +317,15 @@ COPY . /app
 RUN npm install
 
 # CORRECT - Pinned version, non-root, multi-stage
-FROM node:20.11.1-slim AS build
+# Current LTS (Node 20 reached end of life April 2026); pin by digest in production
+FROM node:24-slim AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 COPY . .
 USER node
-HEALTHCHECK CMD curl -f http://localhost:3000/health || exit 1
+# -slim images do not include curl; use the runtime itself for the health check
+HEALTHCHECK CMD node -e "fetch('http://localhost:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 ```
 
 ### Kubernetes

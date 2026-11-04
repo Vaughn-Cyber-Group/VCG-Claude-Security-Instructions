@@ -23,10 +23,10 @@ git config user.email  # Should be your company email
 
 ```bash
 # Check npm package licenses
-npx license-checker --summary
+npx license-checker-rseidelsohn --summary   # maintained fork of license-checker
 
-# Check for prohibited licenses (GPL, AGPL, SSPL)
-npx license-checker --failOn "GPL-2.0;GPL-3.0;AGPL-3.0;SSPL-1.0"
+# Check for prohibited licenses (matches the CLAUDE.md prohibited list; extend for -only/-or-later SPDX variants)
+npx license-checker-rseidelsohn --failOn "GPL-2.0;GPL-3.0;AGPL-3.0;LGPL-2.1;LGPL-3.0;SSPL-1.0;BUSL-1.1;CC-BY-NC-4.0"
 
 # Check Python package licenses
 pip-licenses --format=markdown
@@ -62,8 +62,9 @@ cosign verify --key cosign.pub <image>
 ## Infrastructure Security
 
 ```bash
-# Scan Terraform for misconfigurations
-tfsec .
+# Scan Terraform for misconfigurations (tfsec is deprecated; its checks now live in Trivy)
+# Trivy had a supply-chain compromise in March 2026 (malicious v0.69.4): pin a verified release
+trivy config .
 
 # Scan Kubernetes manifests
 kubesec scan deployment.yaml
@@ -95,7 +96,7 @@ npx eslint --plugin security .
 docker run -t ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t https://staging.example.com
 
 # Run Nuclei with common vulnerability templates
-nuclei -u https://staging.example.com -t cves/ -t vulnerabilities/
+nuclei -u https://staging.example.com -tags cve,vuln
 ```
 
 ## Secret Scanning (Pre-Commit)
@@ -134,4 +135,16 @@ govulncheck ./...
 
 # Audit Rust dependencies
 cargo audit
+```
+
+## Claude Code Configuration Checks
+
+```bash
+# Confirm which settings sources are loaded and whether a managed policy applies
+claude doctor        # lists rejected settings entries and config errors
+# Inside a session: /status shows "Setting sources"; /permissions lists effective rules
+
+# Before trusting an unfamiliar repository, inspect the files that can run code or redirect traffic
+ls -la .claude/ 2>/dev/null; cat .mcp.json .claude/settings.json 2>/dev/null
+grep -rn "ANTHROPIC_BASE_URL\|apiKeyHelper\|\"hooks\"" .claude/ .mcp.json 2>/dev/null
 ```
