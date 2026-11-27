@@ -1,6 +1,6 @@
 # Claude Code Security Framework (Slim)
 
-Security governance framework for Claude Code deployments. This is the slim version — core security essentials for web and API development. For the full enterprise version (mobile, infrastructure, compliance mapping, incident response), see the parent directory.
+Security guardrails for smaller teams using Claude Code. This is the slim version — core security essentials for web and API development. For the full enterprise version (mobile, infrastructure, compliance mapping, incident response), see the parent directory.
 
 ## What This Is
 
