@@ -1,6 +1,12 @@
 # Claude Code Enterprise Security Framework
 
-Enterprise governance framework for securing Claude Code deployments. Provides layered security controls that wrap around [Project CodeGuard](https://project-codeguard.org/) technical rules and align with OWASP GenAI security guidance.
+Security guardrails for teams and enterprises rolling out Claude Code. Admins get controls they can enforce, and developers get secure defaults, so AI-assisted coding stays fast without putting secrets, systems, or customer data at risk. It wraps [Project CodeGuard](https://project-codeguard.org/) technical rules and aligns with OWASP GenAI security guidance.
+
+## Who This Is For
+
+- **Security and IT admins** deploying Claude Code across an organization (Team or Enterprise plans, MDM)
+- **Engineering leads** setting shared guardrails for team repos
+- **Developers** who want secure defaults without slowing down
 
 ## What This Is
 
